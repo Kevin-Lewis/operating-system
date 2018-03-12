@@ -60,7 +60,7 @@ void main(){
 	/* Step 2 – write revised file */
 	interrupt(33,8,"spr18\0",buffer,size);
 	/* Step 3 – delete original file */
-	//interrupt(33,7,"spc02\0",0,0);
+	interrupt(33,7,"spc02\0",0,0);
 	while (1);
 }
 
@@ -350,6 +350,48 @@ void writeFile(char* name, char* buffer, int numberOfSectors){
 	
 }
 void deleteFile(char* name){
+	char* directory[512]; char* map[512];
+	int length = 0; int nameMatch = 0; int found = 0;
+	int i; int j; int k; int l;
+	char* n; char*c = name; char* dir; char* fb; char* m;
+
+	//load disk directory and map
+	readSector(directory, 257);
+	readSector(map, 256);
+
+	//get the length of the name
+	while(*c != '\0'){c++; length = length + 1;}
+
+	//look for file
+	dir = directory;
+	for(i = 0; i < 16; i++){
+		if(*dir == 0){dir = dir + 32;} //Jump to next location if empty
+		else if(found == 0){//compares names char by char 
+			nameMatch = 1; found = 1;
+			n = name;
+			fb = dir;
+			for(j = 0; j < length; j++){
+				if(*n == *dir){n++; dir++;}
+				else{nameMatch = 0; found = 0; dir++;}
+			}
+			for(k = 0; k < (8 - length); dir++){k++;}	//increments dir past padded zeroes
+			dir = dir + 24;
+		}
+	}
+	if(nameMatch == 0){error(0);}
+	else{
+		*fb = 0; //Set first byte to zero
+		fb = fb + 8;
+		while(*fb != 0){
+			m = map;
+			for(l = 0; l < *fb; l++){m++;}
+			*m = 0;
+			fb++;
+		}
+	}
+
+	writeSector(directory, 257);
+	writeSector(map, 256);
 
 }
 
