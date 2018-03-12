@@ -19,7 +19,7 @@
 /*                                                                        */
 /*                                                                        */
 /*                                                                        */
-/* Signed:____________Kevin Lewis______________ Date:__3-16-2018___        */
+/* Signed:____________Kevin Lewis______________ Date:__3-5-2018___        */
 /*                                                                        */
 /*                                                                        */
 /* 3460:4/526 BlackDOS2020 kernel, Version 1.01, Spring 2018.             */
@@ -31,24 +31,36 @@ void readInt(int* n);
 void writeInt(int x);
 void readSector(char* buffer, int sector);
 void writeSector(char* buffer, int sector);
+
+void readFile(char* name, char* buffer, int* numberOfSectors);
+void writeFile(char* name, char* buffer, int numberOfSectors);
+void deleteFile(char* name);
+
 void clearScreen(int bg, int fg);
+
+void error(int error);
 
 int mod(int a, int b);
 int div(int a, int b);
 
 
-void main()
-{
-	char buffer[512]; int i;
+void main(){
+	char buffer[12288]; int size;
 	makeInterrupt21();
-	for (i = 0; i < 512; i++) buffer[i] = 0;
-	buffer[0] = 1;
-	buffer[1] = 10;
-	interrupt(33,6,buffer,258,0);
+	
+	/* Step 0 – config file */
+	interrupt(33,2,buffer,258,0);
 	interrupt(33,12,buffer[0]+1,buffer[1]+1,0);
 	printLogo();
-	interrupt(33,2,buffer,30,0);
+	/* Step 1 – load/edit/print file */
+	interrupt(33,3,"spc02\0",buffer,&size);
+	buffer[7] = '2'; buffer[8] = '0';
+	buffer[9] = '1'; buffer[10] = '8';
 	interrupt(33,0,buffer,0,0);
+	/* Step 2 – write revised file */
+	interrupt(33,8,"spr18\0",buffer,size);
+	/* Step 3 – delete original file */
+	//interrupt(33,7,"spc02\0",0,0);
 	while (1);
 }
 
@@ -200,6 +212,157 @@ void clearScreen(int bg, int fg){
 	}
 }
 
+void readFile(char* name, char* buffer, int* numberOfSectors){
+
+	char* sector[512];
+	char* c; char* f; char* b; char* p;
+	int length = 0; int nameMatch = 0; int location = 0;
+	int i, j, k, l = 0;
+	int address;
+	
+	//load sector into character array
+	readSector(sector, 257);
+
+	*numberOfSectors = 0;
+
+	//match file name
+	c = name;
+	f = name;
+	b = sector;
+
+	length = 0;
+	nameMatch = 0;
+	location = 0;
+
+	while(*c != '\0'){c++; length = length + 1;}	//get the length of the name
+
+	for(i = 0; i < 16; i++){						//loop through 16 file positions
+		if(nameMatch == 0){							//keep looking if match isn't found
+			
+			f = name;								//set f to name at the start of each new name location
+			nameMatch = 1;							//assume a match until proven otherwise
+			
+			if(*b == 0){nameMatch = 0;}				//if first char is 0, there is no file at that location
+			
+			else{									//if a char is found, compare it to name
+				for(j = 0; j < length; j++){		//compares char by char
+					if(*b == *f){b++; f++;}			//if two chars match, continue comparing
+					else{nameMatch = 0; b++;}		//if two chars do not match, skip to end of name location
+				}
+
+				for(k = 0; k < (8 - length); b++){k++;}	//increment b past padded zeroes
+			}
+		}
+		if(nameMatch == 0){b = b + 24;}				//jump to the beginning of next name location
+		else{										//if name is found, load sector by sector into buffer
+			while(*b != 0){							//read each sector in the file to the buffer
+				readSector(buffer + address, *b);
+				address = address + 512;
+				b++;
+				*numberOfSectors = *numberOfSectors + 1;
+			}
+		}
+	}
+
+	if(nameMatch == 0){interrupt(33,15,0,0,0);}
+
+}
+
+void writeFile(char* name, char* buffer, int numberOfSectors){
+	char* directory[512]; char* map[512]; char bufferTemp[512];
+	int length = 0; int size;
+	char* c = name; char* dir; char* n = name; char* mapLoc; char* writePoint; char* b = buffer;
+	int i; int j; int k; int l; int m; int p; int nameMatch = 0; int count = 0; int sector; int found = 0;
+
+	//Used when writing to sectors
+	char* buf = buffer; int x = 0;
+
+	//load the disk and map directory
+	readSector(directory, 257);
+	readSector(map, 256);
+
+	//get the length of the name
+	while(*c != '\0'){c++; length = length + 1;}
+
+	//find a free directory or a duplicate
+	dir = directory;
+	for(i = 0; i < 16; i++){
+		if(nameMatch == 1){error(1); i = 16;}
+		else{
+			if(*dir == 0 && found == 0){	//Checks if directory is empty
+				sector = count;
+				//copy name to this directory
+				n = name;
+				for(l = 0; l < length; l++){
+					*dir = *n;
+					n++; dir++;
+				}
+				for(m = 0; m < (8 - length); dir++){m++;}   //increments dir past padded zeroes
+				writePoint = dir;
+				dir = dir + 24;
+				found = 1;
+
+			} 
+			else{											//compares names char by char
+				count++; 
+				nameMatch = 1;
+				n = name;
+				for(j = 0; j < length; j++){  
+					if(*n == *dir){n++; dir++;}
+					else{nameMatch = 0; dir++;}
+				}
+				for(k = 0; k < (8 - length); dir++){k++;}	//increments dir past padded zeroes
+				dir = dir + 24;
+			}
+		}
+	}
+
+	//Search through map for open sectors
+	mapLoc = map; count = 0;
+	for(size = 0; size < numberOfSectors; size++){
+		while(*mapLoc != 0 && count < 256){
+			mapLoc++;
+			count++;
+		}
+		//Set as FF on map
+		*mapLoc = 255;
+
+		//Write sector numbers to directory
+		*writePoint = count;
+		writePoint++;
+		
+		//Write to sector
+		for(x = 0; x < 512; x++){
+		bufferTemp[x] = *buf;
+		buf++;
+		}
+		writeSector(bufferTemp, count);
+	}
+
+	if(count == 256){error(2);} //Error if there is not enough free sectors
+
+	for(k = 0; k < (24 - numberOfSectors); k++){mapLoc++; *mapLoc = 0;} //Pad remaining locations with 0
+
+	writeSector(directory, 257);
+	writeSector(map, 256);
+
+
+	
+}
+void deleteFile(char* name){
+
+}
+
+void error(int error){
+
+	switch(error){
+		case 0: interrupt(33,0,"File not found.\r\n\0",0,0); break;
+		case 1: interrupt(33,0,"Duplicate or invalid file name.\r\n\0",0,0); break;
+		case 2: interrupt(33,0,"Disk full.\r\n\0",0,0); break;
+		default: interrupt(33,0,"General error.\r\n\0",0,0);
+	}
+}
+
 /* ^^^^^^^^^^^^^^^^^^^^^^^^ */
 /* MAKE FUTURE UPDATES HERE */
 
@@ -210,10 +373,14 @@ void handleInterrupt21(int ax, int bx, int cx, int dx)
       case 0: printString(bx,cx); break;
       case 1: readString(bx); break;
       case 2: readSector(bx,cx); break;
+      case 3: readFile(bx,cx,dx); break;
       case 6: writeSector(bx,cx); break;
+      case 7: deleteFile(bx); break;
+      case 8: writeFile(bx,cx,dx); break;
       case 12: clearScreen(bx,cx); break;
       case 13: writeInt(bx); break;
       case 14: readInt(bx); break;
+      case 15: error(bx); break;
 /*      case 2: case 3: case 4: case 5: */
 /*      case 6: case 7: case 8: case 9: case 10: */
 /*      case 11: case 12: case 15: */
