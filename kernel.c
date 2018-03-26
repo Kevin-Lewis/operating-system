@@ -369,7 +369,7 @@ void deleteFile(char* name){
 		else if(found == 0){//compares names char by char 
 			nameMatch = 1; found = 1;
 			n = name;
-			fb = dir;
+			fb = dir; //first byte of correct name location
 			for(j = 0; j < length; j++){
 				if(*n == *dir){n++; dir++;}
 				else{nameMatch = 0; found = 0; dir++;}
