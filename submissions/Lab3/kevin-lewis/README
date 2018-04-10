@@ -1,0 +1,7 @@
+Lab 3
+Kevin Lewis
+2-23-2018
+
+This assignment can be verified by executing the following commands:
+	./compileOS.sh
+	bochs -f osxterm.txt

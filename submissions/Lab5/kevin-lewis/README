@@ -1,0 +1,15 @@
+Lab 4
+Kevin Lewis
+3-26-2018
+
+This assignment can be verified by executing the following commands:
+
+	bcc -ansi -c -o fib.o fib.c
+	as86 blackdos.asm -o bdos_asm.o
+	ld86 -o fib -d fib.o bdos_asm.o
+---------------------------------------
+	./compileOS.sh
+	./loadFile kitty2
+	./loadFile fib
+	bochs -f osxterm.txt
+

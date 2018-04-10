@@ -1,0 +1,10 @@
+Lab 4
+Kevin Lewis
+3-12-2018
+
+This assignment can be verified by executing the following commands:
+	./compileOS.sh
+	./loadFile spc02
+	bochs -f osxterm.txt
+
+The dump file contains the current memory state after running the provided test program

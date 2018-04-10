@@ -1,0 +1,9 @@
+Lab 2
+Kevin Lewis
+2-16-2018
+
+This assignment can be verified by executing the following commands and then following the on screen instructions:
+	./compileOS.sh
+	bochs -f osxterm.txt
+
+the output sent to the printer can be found in 'printer.out'

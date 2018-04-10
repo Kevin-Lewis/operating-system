@@ -39,7 +39,7 @@ void deleteFile(char* name);
 void clearScreen(int bg, int fg);
 
 void runProgram(char* name, int segment);
-void stop();
+void stop(launchProgram(12288));
 
 void error(int e);
 
@@ -400,9 +400,9 @@ void runProgram(char* name, int segment){
 
 void error(int e){
 	switch(e){
-		case 0: interrupt(33,0,"File not found.\r\n\0",0,0); break;
-		case 1: interrupt(33,0,"Duplicate or invalid file name.\r\n\0",0,0); break;
-		case 2: interrupt(33,0,"Disk full.\r\n\0",0,0); break;
+		case 0: interrupt(33,0,"File not found.\r\n\0",0,0); writeInt(1); break;
+		case 1: interrupt(33,0,"Duplicate or invalid file name.\r\n\0",0,0); writeInt(1); break;
+		case 2: interrupt(33,0,"Disk full.\r\n\0",0,0); writeInt(2); break;
 		default: interrupt(33,0,"General error.\r\n\0",0,0); break;
 	}
 }

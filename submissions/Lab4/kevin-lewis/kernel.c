@@ -19,7 +19,7 @@
 /*                                                                        */
 /*                                                                        */
 /*                                                                        */
-/* Signed:____________Kevin Lewis______________ Date:__3-5-2018___        s*/
+/* Signed:____________Kevin Lewis______________ Date:__3-5-2018___        */
 /*                                                                        */
 /*                                                                        */
 /* 3460:4/526 BlackDOS2020 kernel, Version 1.01, Spring 2018.             */
@@ -38,24 +38,30 @@ void deleteFile(char* name);
 
 void clearScreen(int bg, int fg);
 
-void runProgram(char* name, int segment);
-void stop();
-
-void error(int e);
+void error(int error);
 
 int mod(int a, int b);
 int div(int a, int b);
 
 
 void main(){
-	char buffer[512];
+	char buffer[12288]; int size;
 	makeInterrupt21();
+	
+	/* Step 0 – config file */
 	interrupt(33,2,buffer,258,0);
 	interrupt(33,12,buffer[0]+1,buffer[1]+1,0);
 	printLogo();
-	interrupt(33,4,"Shell\0",2,0);
-	interrupt(33,0,"Bad or missing command interpreter.\r\n\0",0,0);
-	while(1);
+	/* Step 1 – load/edit/print file */
+	interrupt(33,3,"spc02\0",buffer,&size);
+	buffer[7] = '2'; buffer[8] = '0';
+	buffer[9] = '1'; buffer[10] = '8';
+	interrupt(33,0,buffer,0,0);
+	/* Step 2 – write revised file */
+	interrupt(33,8,"spr18\0",buffer,size);
+	/* Step 3 – delete original file */
+	interrupt(33,7,"spc02\0",0,0);
+	while (1);
 }
 
 void printString(char* c, int d)
@@ -66,13 +72,16 @@ void printString(char* c, int d)
 			interrupt(16, 14*256 + *c, 0, 0, 0);
 			c++;
 		} while(*(c) != '\0');
+		*c = '\0';
 	}
 	else if (d == 1){
 		do{
 			interrupt(23, *c, 0, 0, 0);
 			c++;
 		} while(*(c) != '\0');
+		*c = '\0';
 	}
+
    return;
 }
 
@@ -87,6 +96,7 @@ char* readString(char str[]){
 			*c = '\0';
 
 			//output string on new line
+			interrupt(16, 14*256 + '\0', 0, 0, 0);
 			interrupt(16, 14*256 + '\r', 0, 0, 0);
 			interrupt(16, 14*256 + '\n', 0, 0, 0);
 			return str;	
@@ -140,7 +150,7 @@ void readInt(int* n){
 
     *n = num;
 
-    //writeInt(*n);
+    writeInt(*n);
     
 }
 
@@ -151,7 +161,7 @@ void writeInt(int x){
     char tmp2[80];
     char* c2 = tmp2;
     // Check for zero
-    if(x==0){interrupt(33,0,"0\0\r\n",0,0); return;}
+    if(x==0){interrupt(33,0,"0\0\r\n",1,0); return;}
     // Fill buffer with digit characters in reverse order.
     if(x != 0){
       while (x != 0) {
@@ -170,7 +180,7 @@ void writeInt(int x){
       }
       *c2 = '\0'; c2++; c2 = '\r'; c2++; c2 = '\n';
     }
-    interrupt(33,0,tmp2,0,0);
+    interrupt(33,0,tmp2,1,0);
 }
 
 void readSector(char* buffer, int sector){
@@ -192,9 +202,9 @@ void writeSector(char* buffer, int sector){
 }
 void clearScreen(int bg, int fg){
 	int i;
-	//for (i = 0; i < 24; i++){
-		interrupt(33,0,"k\r\n",0,0);
-	//}
+	for (i = 0; i<24; i++){
+		interrupt(33,0,"\r\n",0,0);
+	}
 	interrupt(16,512,0,0,0);
 
 	if(bg > 0 && fg > 0 && bg <= 8 && fg <= 16){
@@ -203,11 +213,12 @@ void clearScreen(int bg, int fg){
 }
 
 void readFile(char* name, char* buffer, int* numberOfSectors){
+
 	char* sector[512];
 	char* c; char* f; char* b; char* p;
 	int length = 0; int nameMatch = 0; int location = 0;
 	int i, j, k, l = 0;
-	int address = 0;
+	int address;
 	
 	//load sector into character array
 	readSector(sector, 257);
@@ -335,6 +346,8 @@ void writeFile(char* name, char* buffer, int numberOfSectors){
 	writeSector(directory, 257);
 	writeSector(map, 256);
 
+
+	
 }
 void deleteFile(char* name){
 	char* directory[512]; char* map[512];
@@ -382,32 +395,18 @@ void deleteFile(char* name){
 
 }
 
-void runProgram(char* name, int segment){
-	char* buffer[4096];
-	int baseLocation = 0;
-	char* c; int i;
+void error(int error){
 
-	readFile(name, buffer, 1);
-	baseLocation = segment * 4096;
-	c = buffer;
-	for(i = 0; i < 4096; i++){
-		putInMemory(baseLocation, i, *c);
-		c++;
-	}
-
-	launchProgram(baseLocation);
-}
-
-void error(int e){
-	switch(e){
+	switch(error){
 		case 0: interrupt(33,0,"File not found.\r\n\0",0,0); break;
 		case 1: interrupt(33,0,"Duplicate or invalid file name.\r\n\0",0,0); break;
 		case 2: interrupt(33,0,"Disk full.\r\n\0",0,0); break;
-		default: interrupt(33,0,"General error.\r\n\0",0,0); break;
+		default: interrupt(33,0,"General error.\r\n\0",0,0);
 	}
 }
 
-void stop(){launchProgram(8192);}
+/* ^^^^^^^^^^^^^^^^^^^^^^^^ */
+/* MAKE FUTURE UPDATES HERE */
 
 void handleInterrupt21(int ax, int bx, int cx, int dx)
 {
@@ -417,17 +416,16 @@ void handleInterrupt21(int ax, int bx, int cx, int dx)
       case 1: readString(bx); break;
       case 2: readSector(bx,cx); break;
       case 3: readFile(bx,cx,dx); break;
-      case 4: runProgram(bx,cx); break;
-      case 5: stop(); break;
       case 6: writeSector(bx,cx); break;
       case 7: deleteFile(bx); break;
       case 8: writeFile(bx,cx,dx); break;
-      case 11: interrupt(25,0,0,0,0); break;
       case 12: clearScreen(bx,cx); break;
       case 13: writeInt(bx); break;
       case 14: readInt(bx); break;
       case 15: error(bx); break;
-
+/*      case 2: case 3: case 4: case 5: */
+/*      case 6: case 7: case 8: case 9: case 10: */
+/*      case 11: case 12: case 15: */
 	  default: printString("General BlackDOS error.\r\n\0");
    }  
 }
