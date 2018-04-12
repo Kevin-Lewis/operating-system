@@ -173,6 +173,7 @@ void writeInt(int x){
     interrupt(33,0,tmp2,0,0);
 }
 
+
 void readSector(char* buffer, int sector){
 
 	int relSecNo = mod(sector,18) + 1;
@@ -399,11 +400,41 @@ void runProgram(char* name, int segment){
 }
 
 void error(int e){
+	char errMsg0[18], errMsg1[33], errMsg2[13], errMsg3[17];
+
+	errMsg0[0] = 'F'; errMsg0[1] = 'i'; errMsg0[2] = 'l'; errMsg0[3] = 'e';
+	errMsg0[4] = ' '; errMsg0[5] = 'n'; errMsg0[6] = 'o'; errMsg0[7] = 't';
+	errMsg0[8] = ' '; errMsg0[9] = 'f'; errMsg0[10] = 'o'; errMsg0[11] = 'u';
+	errMsg0[12] = 'n'; errMsg0[13] = 'd'; 
+	errMsg0[14] = 46; errMsg0[15] = 13; errMsg0[16] = 10; errMsg0[17] = 0;
+
+	errMsg1[0] = 'D'; errMsg1[1] = 'u'; errMsg1[2] = 'p'; errMsg1[3] = 'l';
+	errMsg1[4] = 'i'; errMsg1[5] = 'c'; errMsg1[6] = 'a'; errMsg1[7] = 't';
+	errMsg1[8] = 'e'; errMsg1[9] = ' '; errMsg1[10] = 'o'; errMsg1[11] = 'r';
+	errMsg1[12] = ' '; errMsg1[13] = 'i'; errMsg1[14] = 'n'; errMsg1[15] = 'v';
+	errMsg1[16] = 'a'; errMsg1[17] = 'l'; errMsg1[18] = 'i'; errMsg1[19] = 'd';
+	errMsg1[20] = ' '; errMsg1[21] = 'f'; errMsg1[22] = 'i'; errMsg1[23] = 'l';
+	errMsg1[24] = 'e'; errMsg1[25] = 'n'; errMsg1[26] = 'a'; errMsg1[27] = 'm';
+	errMsg1[28] = 'e';
+	errMsg1[29] = '.'; errMsg1[30] = 13; errMsg1[31] = 10; errMsg1[32] = 0;
+
+	errMsg2[0] = 'D'; errMsg2[1] = 'i'; errMsg2[2] = 's'; errMsg2[3] = 'k';
+	errMsg2[4] = ' '; errMsg2[5] = 'f'; errMsg2[6] = 'u'; errMsg2[7] = 'l';
+	errMsg2[8] = 'l'; 
+	errMsg2[9] = '.'; errMsg2[10] = 13; errMsg2[11] = 10; errMsg2[12] = 0;
+
+	errMsg3[0] = 'G'; errMsg3[1] = 'e'; errMsg3[2] = 'n'; errMsg3[3] = 'e';
+	errMsg3[4] = 'r'; errMsg3[5] = 'a'; errMsg3[6] = 'l'; errMsg3[7] = ' ';
+	errMsg3[8] = 'e'; errMsg3[9] = 'r'; errMsg3[10] = 'r'; errMsg3[11] = 'o';
+	errMsg3[12] = 'r'; 
+	errMsg3[13] = '.'; errMsg3[14] = 13; errMsg3[15] = 10; errMsg3[16] = 0;
+
+
 	switch(e){
-		case 0: interrupt(33,0,"File not found.\r\n\0",0,0); break;
-		case 1: interrupt(33,0,"Duplicate or invalid file name.\r\n\0",0,0); break;
-		case 2: interrupt(33,0,"Disk full.\r\n\0",0,0); break;
-		default: interrupt(33,0,"General error.\r\n\0",0,0); break;
+		case 0: interrupt(33,0,errMsg0,0,0); break;
+		case 1: interrupt(33,0,errMsg1,0,0); break;
+		case 2: interrupt(33,0,errMsg2,0,0); break;
+		default: interrupt(33,0,errMsg3,0,0);break;
 	}
 }
 

@@ -86,7 +86,7 @@ int strCmp(char* str1, char* str2){
 	return found;
 }
 
-int isUpper(char* c){if (c >= 'A' && c <= 'Z'){return 1;} else {return 0;}}
+int isUpper(char* c){if (*c >= 'A' && *c <= 'Z'){return 1;} else {return 0;}}
 
 void directory(){
 	char* sector[512];
@@ -95,7 +95,6 @@ void directory(){
 
 	c = sector;
 
-	interrupt(33,15,0,0,0);
 	interrupt(33,2,sector,257);
 
 	for(i = 0; i < 16; i++){
@@ -187,6 +186,7 @@ void runFile(char* cmd){
 	while(*cmd != ' ' && cmd != '\0'){cmd++;}
 	cmd++;
 	interrupt(33,4,cmd,4,0);
+	boot();
 
 }
 
@@ -222,24 +222,23 @@ void tweet(char* cmd){
 
 }
 
-void type(char* filename, char* buffer){
-	int i = 0;
-	while(*filename != 'e'){filename++;}
-	filename = filename + 2;
-	interrupt(33,3,filename,buffer,0);
-	interrupt(33,0,buffer,0,0);
-	while(*filename != '\0'){*filename = '\0'; filename++;}
-	for(i = 0; i < 12288; i++){*buffer = '\0'; buffer++;}
-	PRINTS("\r\n\0");
-}
-
 void lprint(char* filename, char* buffer){
+	char* start = filename;
 	int i = 0;
-	while(*filename != 'e'){filename++;}
-	filename = filename + 2;
-	interrupt(33,3,filename,buffer,0);
+	while(*filename != ' '){filename++;}
+	filename = filename + 1;
+	interrupt(33,3,filename,buffer,3);
 	interrupt(33,0,buffer,1,0);
-	while(*filename != '\0'){*filename = '\0'; filename++;}
 	for(i = 0; i < 12288; i++){*buffer = '\0'; buffer++;}
 	LPRINTS("\r\n\0");
+}
+
+void type(char* filename, char* buffer){
+	int i = 0;
+	while(*filename != ' '){filename++;}
+	filename = filename + 1;
+	interrupt(33,3,filename,buffer,0);
+	interrupt(33,0,buffer,0,0);
+	for(i = 0; i < 12288; i++){*buffer = '\0'; buffer++;}
+	PRINTS("\r\n\0");
 }
